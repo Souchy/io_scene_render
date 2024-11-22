@@ -252,6 +252,7 @@ def export_material_node(parent, scene, mat, rootMaterial, filepath):
     # Wrong material: portal1 | type: ShaderNodeBsdfTransparent
     # bpy.data.materials["portal01"]["portal"]
     
+    if "portal" in rootMaterial:
         mat_data["type"] = "portal"
         mat_data["portal_id"] = rootMaterial["portal"]
         mat_data["scene_id"] = rootMaterial["scene"]
