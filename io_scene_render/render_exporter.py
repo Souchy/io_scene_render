@@ -1,3 +1,4 @@
+import inspect
 import bpy
 import bmesh
 import os
@@ -245,18 +246,15 @@ def texture_or_value (parent, inputSlot, filepath, scale=1.0, is_normal_map = Fa
                         inputSlot.default_value[2] * scale]
             
 
-def export_material_node(parent, scene, mat, materialName, filepath):
+def export_material_node(parent, scene, mat, rootMaterial, filepath):
     parent.report({'INFO'}, "Exporting material node type : " + mat.bl_idname)
     mat_data = {}
     # Wrong material: portal1 | type: ShaderNodeBsdfTransparent
     # bpy.data.materials["portal01"]["portal"]
     
-    if mat.bl_idname == 'ShaderNodeBsdfTransparent':
-        # mat_data = {}
         mat_data["type"] = "portal"
-        # mat_data["portal_id"] = mat["portal"]
-        # mat_data["scene_d"] = mat["scene"]
-        # mats += [mat_data]
+        mat_data["portal_id"] = rootMaterial["portal"]
+        mat_data["scene_id"] = rootMaterial["scene"]
     elif mat.bl_idname == 'ShaderNodeBsdfDiffuse':
         mat_data["type"] = "diffuse"
         mat_data["albedo"] = texture_or_value(parent, mat.inputs[0], filepath)
@@ -277,8 +275,8 @@ def export_material_node(parent, scene, mat, materialName, filepath):
         else:
             mat_data["type"] = "blend"
             mat_data["alpha"] = texture_or_value(parent, mat.inputs[0], filepath)
-        mat_data["matA"] = export_material_node(parent, scene, mat.inputs[2].links[0].from_node, materialName, filepath)
-        mat_data["matB"] = export_material_node(parent, scene, mat.inputs[1].links[0].from_node, materialName, filepath)
+        mat_data["matA"] = export_material_node(parent, scene, mat.inputs[2].links[0].from_node, rootMaterial.name, filepath)
+        mat_data["matB"] = export_material_node(parent, scene, mat.inputs[1].links[0].from_node, rootMaterial.name, filepath)
     elif mat.bl_idname == "ShaderNodeBsdfGlass":
         mat_data["type"] = "dielectric"
         mat_data["ks"] = texture_or_value(parent, mat.inputs[0], filepath) # Color
@@ -335,14 +333,14 @@ def export_material_node(parent, scene, mat, materialName, filepath):
             mat_data = local_material
             
     else:
-        parent.report({'WARNING'}, f"Wrong material: {materialName} | type: {mat.bl_idname}")
+        parent.report({'WARNING'}, f"Wrong material: {rootMaterial.name} | type: {mat.bl_idname}")
         parent.error_or_warning = True
         mat_data["type"] = "diffuse"
 
     # Give name 
-    mat_data["name"] = materialName
+    mat_data["name"] = rootMaterial.name
     if not ("type" in mat_data):
-        parent.report({'WARNING'}, f"Wrong material: {materialName} | type: {mat.bl_idname} | json: {mat_data}")
+        parent.report({'WARNING'}, f"Wrong material: {rootMaterial.name} | type: {mat.bl_idname} | json: {mat_data}")
         parent.error_or_warning = True
         mat_data["type"] = "diffuse"
         mat_data["albedo"] = [0.8, 0.0, 0.8]
@@ -357,22 +355,15 @@ def export_material(parent, scene, material, filepath):
     currentMaterial = None
     material.use_nodes = True
         
+    # parent.report({'INFO'}, vars(material))
     # parent.report({'INFO'}, "heyyyy : " + material.bl_idname)
-    if material.name == "portal01":
-        # parent.report({'INFO'}, "heyyyy portal : " + material["portal"])
-        mat_data = {}
-        mat_data["type"] = "portalB"
-        mat_data["name"] = material.name
-        mat_data["portal_id"] = material["portal"]
-        mat_data["scene_id"] = material["scene"]
-        mats += [mat_data]
     if material and material.use_nodes: 
         for node in material.node_tree.nodes:
             if node.type == "OUTPUT_MATERIAL":
                 for input in node.inputs:
                     for node_links in input.links:
                         currentMaterial =  node_links.from_node
-                        mats += [export_material_node(parent, scene, currentMaterial, material.name, filepath)]
+                        mats += [export_material_node(parent, scene, currentMaterial, material, filepath)]
     return mats
 
 def write_obj(file, mesh, indices, normals, i):
