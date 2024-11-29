@@ -249,13 +249,11 @@ def texture_or_value (parent, inputSlot, filepath, scale=1.0, is_normal_map = Fa
 def export_material_node(parent, scene, mat, rootMaterial, filepath):
     parent.report({'INFO'}, "Exporting material node type : " + mat.bl_idname)
     mat_data = {}
-    # Wrong material: portal1 | type: ShaderNodeBsdfTransparent
-    # bpy.data.materials["portal01"]["portal"]
     
-    if "portal" in rootMaterial:
+    if "portal_id" in rootMaterial:
         mat_data["type"] = "portal"
-        mat_data["portal_id"] = rootMaterial["portal"]
-        mat_data["scene_id"] = rootMaterial["scene"]
+        mat_data["portal_id"] = rootMaterial["portal_id"]
+        mat_data["scene_id"] = rootMaterial["scene_id"]
     elif mat.bl_idname == 'ShaderNodeBsdfDiffuse':
         mat_data["type"] = "diffuse"
         mat_data["albedo"] = texture_or_value(parent, mat.inputs[0], filepath)
@@ -356,8 +354,6 @@ def export_material(parent, scene, material, filepath):
     currentMaterial = None
     material.use_nodes = True
         
-    # parent.report({'INFO'}, vars(material))
-    # parent.report({'INFO'}, "heyyyy : " + material.bl_idname)
     if material and material.use_nodes: 
         for node in material.node_tree.nodes:
             if node.type == "OUTPUT_MATERIAL":
