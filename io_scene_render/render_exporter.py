@@ -264,6 +264,7 @@ def export_material_node(parent, scene, mat, rootMaterial, filepath):
     elif mat.bl_idname == 'ShaderNodeBsdfDiffuse':
         mat_data["type"] = "diffuse"
         mat_data["albedo"] = texture_or_value(parent, mat.inputs[0], filepath)
+        mat_data["alpha"] =  mat.inputs[0].default_value[3]
         mat_data["roughness"] = texture_or_value(parent, mat.inputs[1], filepath)
         if texture_might_exist(mat.inputs["Normal"]):
             normal_map_params = texture_or_value(parent, mat.inputs["Normal"], filepath, is_normal_map = True)
