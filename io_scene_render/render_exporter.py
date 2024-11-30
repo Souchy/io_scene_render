@@ -134,7 +134,8 @@ def only_value (parent, inputSlot):
         else: 
             return [inputSlot.default_value[0], 
                     inputSlot.default_value[1], 
-                    inputSlot.default_value[2]]
+                    inputSlot.default_value[2]
+                    ]
   
     node = inputSlot.links[0].from_node # Take always the first link
               
@@ -157,8 +158,8 @@ def texture_or_value (parent, inputSlot, filepath, scale=1.0, is_normal_map = Fa
         else: 
             return [inputSlot.default_value[0] * scale, 
                     inputSlot.default_value[1] * scale, 
-                    inputSlot.default_value[2] * scale]
-
+                    inputSlot.default_value[2] * scale
+                    ]
     
     node = inputSlot.links[0].from_node # Take always the first link
 
@@ -171,6 +172,7 @@ def texture_or_value (parent, inputSlot, filepath, scale=1.0, is_normal_map = Fa
             return {}
         
 
+    # Texture type: ShaderNodeTexVoronoi
     parent.report({'INFO'}, f"Texture type: {node.bl_idname}")
     if node.bl_idname == "ShaderNodeTexChecker":
         parent.report({'INFO'}, " Detect checkerboard texture")
@@ -192,7 +194,7 @@ def texture_or_value (parent, inputSlot, filepath, scale=1.0, is_normal_map = Fa
             "filename" : "textures/"+node.image.name,
         }
     elif node.bl_idname == "ShaderNodeTexImage":
-        filename = os.path.split(node.image.filepath.replace("\\","//"))[1]
+        filename = node.image.name # os.path.split(node.image.filepath.replace("\\","//"))[-1]
         parent.report({'INFO'}, f"Detect Texture image: {node.image.name} | {filename}") 
         texture_copy(parent, node, filepath)
         if len(node.inputs[0].links) > 0:
@@ -243,20 +245,32 @@ def texture_or_value (parent, inputSlot, filepath, scale=1.0, is_normal_map = Fa
             else: 
                 return [inputSlot.default_value[0] * scale, 
                         inputSlot.default_value[1] * scale, 
-                        inputSlot.default_value[2] * scale]
+                        inputSlot.default_value[2] * scale, 
+                        ]
             
 
 def export_material_node(parent, scene, mat, rootMaterial, filepath):
     parent.report({'INFO'}, "Exporting material node type : " + mat.bl_idname)
     mat_data = {}
-    
+
     if "portal_id" in rootMaterial:
         mat_data["type"] = "portal"
         mat_data["portal_id"] = rootMaterial["portal_id"]
         mat_data["scene_id"] = rootMaterial["scene_id"]
+    elif mat.bl_idname == 'ShaderNodeBsdfTransparent':
+        mat_data["type"] = "transparent"
+        mat_data["albedo"] = texture_or_value(parent, mat.inputs[0], filepath)
+        mat_data["alpha"] =  mat.inputs[0].default_value[3]
     elif mat.bl_idname == 'ShaderNodeBsdfDiffuse':
         mat_data["type"] = "diffuse"
         mat_data["albedo"] = texture_or_value(parent, mat.inputs[0], filepath)
+        mat_data["roughness"] = texture_or_value(parent, mat.inputs[1], filepath)
+        if texture_might_exist(mat.inputs["Normal"]):
+            normal_map_params = texture_or_value(parent, mat.inputs["Normal"], filepath, is_normal_map = True)
+            if len(normal_map_params) != 0:
+                # Normal map added if found
+                mat_data["normal_map"] = normal_map_params
+                exported_normal = True
     elif mat.bl_idname == "ShaderNodeEmission":
         mat_data["type"] = "diffuse_light"
         scale = mat.inputs[1].default_value
