@@ -267,11 +267,22 @@ def export_material_node(parent, scene, mat, rootMaterial, filepath):
         mat_data["alpha"] =  mat.inputs[0].default_value[3]
         mat_data["roughness"] = texture_or_value(parent, mat.inputs[1], filepath)
         if texture_might_exist(mat.inputs["Normal"]):
-            normal_map_params = texture_or_value(parent, mat.inputs["Normal"], filepath, is_normal_map = True)
-            if len(normal_map_params) != 0:
-                # Normal map added if found
-                mat_data["normal_map"] = normal_map_params
-                exported_normal = True
+            normal_node = mat.inputs["Normal"].links[0].from_node
+            parent.report({'INFO'}, "Normal type : " + normal_node.bl_idname)
+            # bump map if bump node (diffuse.normal -> bump.height -> texture)
+            if normal_node.bl_idname == "ShaderNodeBump":
+                bump_map_params = texture_or_value(parent, normal_node.inputs["Height"], filepath, is_normal_map = True)
+                if len(bump_map_params) != 0:
+                    parent.report({'INFO'}, "Add bump map!")
+                    mat_data["bump_map"] = bump_map_params
+            # normal map otherwise
+            else:
+                normal_map_params = texture_or_value(parent, mat.inputs["Normal"], filepath, is_normal_map = True)
+                if len(normal_map_params) != 0:
+                    # Normal map added if found
+                    parent.report({'INFO'}, "Add normal map!")
+                    mat_data["normal_map"] = normal_map_params
+                    exported_normal = True
     elif mat.bl_idname == "ShaderNodeEmission":
         mat_data["type"] = "diffuse_light"
         scale = mat.inputs[1].default_value
