@@ -300,8 +300,10 @@ def export_material_node(parent, scene, mat, rootMaterial, filepath):
         else:
             mat_data["type"] = "blend"
             mat_data["alpha"] = texture_or_value(parent, mat.inputs[0], filepath)
-        mat_data["matA"] = export_material_node(parent, scene, mat.inputs[2].links[0].from_node, rootMaterial.name, filepath)
-        mat_data["matB"] = export_material_node(parent, scene, mat.inputs[1].links[0].from_node, rootMaterial.name, filepath)
+        # parent.report({'INFO'}, "blend 1 : " + mat.bl_idname + ", " + rootMaterial.name)
+        mat_data["matA"] = export_material_node(parent, scene, mat.inputs[2].links[0].from_node, rootMaterial, filepath)
+        # parent.report({'INFO'}, "blend 2 : " + mat.bl_idname + ", " + rootMaterial.name)
+        mat_data["matB"] = export_material_node(parent, scene, mat.inputs[1].links[0].from_node, rootMaterial, filepath)
     elif mat.bl_idname == "ShaderNodeBsdfGlass":
         mat_data["type"] = "dielectric"
         mat_data["ks"] = texture_or_value(parent, mat.inputs[0], filepath) # Color
@@ -363,6 +365,8 @@ def export_material_node(parent, scene, mat, rootMaterial, filepath):
         mat_data["type"] = "diffuse"
 
     # Give name 
+    # parent.report({'INFO'}, "set name of mat a : " + mat.bl_idname)
+    # parent.report({'INFO'}, "set name of mat b : " + rootMaterial.name)
     mat_data["name"] = rootMaterial.name
     if not ("type" in mat_data):
         parent.report({'WARNING'}, f"Wrong material: {rootMaterial.name} | type: {mat.bl_idname} | json: {mat_data}")
