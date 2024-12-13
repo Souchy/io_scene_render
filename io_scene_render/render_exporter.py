@@ -317,47 +317,94 @@ def export_material_node(parent, scene, mat, rootMaterial, filepath):
     elif mat.bl_idname == "ShaderNodeBsdfPrincipled":
         parent.report({'WARNING'}, " Principled shader not fully supported")
         parent.error_or_warning = True
+
+        # mat_data = {
+        #     "type" : "diffuse",
+        #     "albedo": texture_or_value(parent, mat.inputs["Base Color"], filepath),
+        #     "roughness" : texture_or_value(parent, mat.inputs["Roughness"], filepath),
+        #     "specular": texture_or_value(parent, mat.inputs["Specular"], filepath),
+        #     "metallic":  texture_or_value(parent, mat.inputs["Metallic"], filepath),
+        #     "anisotropic": texture_or_value(parent, mat.inputs["Anisotropic"], filepath),
+        #     "translucency":  texture_or_value(parent, mat.inputs["Transmission"], filepath),
+        #     "alpha":  texture_or_value(parent, mat.inputs["Alpha"], filepath),
+        # }
+        # if texture_might_exist(mat.inputs["Normal"]):
+        #     normal_node = mat.inputs["Normal"].links[0].from_node
+        #     parent.report({'INFO'}, "Normal type : " + normal_node.bl_idname)
+        #     # Normal map
+        #     if normal_node.bl_idname == "ShaderNodeNormal":
+        #         normal_map_params = texture_or_value(parent, mat.inputs["Normal"], filepath, is_normal_map = True)
+        #         if len(normal_map_params) != 0:
+        #             # Normal map added if found
+        #             parent.report({'INFO'}, "Add normal map!")
+        #             mat_data["normal_map"] = normal_map_params
+    
+        foreach  texture_or_value(parent, mat.inputs["Weight"], filepath)
+            print
+
         # Export as diffuse
+        diffuse_mat = {
+            "type" : "diffuse",
+            "albedo" : texture_or_value(parent, mat.inputs["Base Color"], filepath),
+            "roughness" : texture_or_value(parent, mat.inputs["Roughness"], filepath),
+            "alpha":  texture_or_value(parent, mat.inputs["Alpha"], filepath),
+        }
+        if "Weight" in mat.inputs:
+            diffuse_mat["translucency"] = texture_or_value(parent, mat.inputs["Weight"], filepath),
+        # Export as blend
         local_material = {}
         if scene.improved_principled:
             local_material["type"] = "blend"
-            base_color = texture_or_value(parent, mat.inputs["Base Color"], filepath)
             local_material["alpha"] = texture_or_value(parent, mat.inputs["Metallic"], filepath)
             local_material["matA"] = {
                 "type" : "metal",
-                "ks" : base_color,
+                "ks" : texture_or_value(parent, mat.inputs["Base Color"], filepath),
                 "roughness" : texture_or_value(parent, mat.inputs["Roughness"], filepath),
                 "specular": texture_or_value(parent, mat.inputs["Specular"], filepath),
                 "anisotropic": texture_or_value(parent, mat.inputs["Anisotropic"], filepath),
                 "anisotropic_rotation": texture_or_value(parent, mat.inputs["Anisotropic Rotation"], filepath),
             }
-            local_material["matB"] = {
-                "type" : "diffuse",
-                "albedo" : base_color
-            }
-            if mat.inputs["Transmission"].default_value > 0.0:
-                parent.error_or_warning = True
-                parent.report({'WARNING'}, " Transmission not supported")
+            local_material["matB"] = diffuse_mat
+            # if mat.inputs["Transmission"].default_value > 0.0:
+            #     parent.error_or_warning = True
+            #     parent.report({'WARNING'}, " Transmission not supported")
             
         else:
-            local_material["type"] = "diffuse"
-            local_material["albedo"] = texture_or_value(parent, mat.inputs[0], filepath)
-        exported_normal = False
-        if scene.export_normal_map: 
-            # TODO: Export other parameters
-            if texture_might_exist(mat.inputs["Normal"]):
+            local_material = diffuse_mat
+            # local_material["type"] = "diffuse"
+            # local_material["albedo"] = texture_or_value(parent, mat.inputs[0], filepath)
+        # Add normal map
+        if texture_might_exist(mat.inputs["Normal"]):
+            normal_node = mat.inputs["Normal"].links[0].from_node
+            parent.report({'INFO'}, "Normal type : " + normal_node.bl_idname)
+            # Normal map
+            if normal_node.bl_idname == "ShaderNodeNormal":
                 normal_map_params = texture_or_value(parent, mat.inputs["Normal"], filepath, is_normal_map = True)
                 if len(normal_map_params) != 0:
                     # Normal map added if found
-                    mat_data["type"] = "normal_map"
-                    mat_data["normal_map"] = normal_map_params
-                    mat_data["material"] = local_material
-                    exported_normal = True
-                else:
-                    # Ignore normal map
-                    parent.report({'WARNING'}, "Normal map ignored -- wrong node topology")
-        if not exported_normal:
-            mat_data = local_material
+                    parent.report({'INFO'}, "Add normal map!")
+                    if scene.improved_principled:
+                        local_material["matA"] = normal_map_params
+                        local_material["matB"] = normal_map_params
+                    else:
+                        local_material["normal_map"] = normal_map_params
+        # exported_normal = False
+        # if scene.export_normal_map: 
+        #     # TODO: Export other parameters
+        #     if texture_might_exist(mat.inputs["Normal"]):
+        #         normal_map_params = texture_or_value(parent, mat.inputs["Normal"], filepath, is_normal_map = True)
+        #         if len(normal_map_params) != 0:
+        #             # Normal map added if found
+        #             mat_data["type"] = "normal_map"
+        #             mat_data["normal_map"] = normal_map_params
+        #             mat_data["material"] = local_material
+        #             exported_normal = True
+        #         else:
+        #             # Ignore normal map
+        #             parent.report({'WARNING'}, "Normal map ignored -- wrong node topology")
+        # if not exported_normal:
+        #     mat_data = local_material
+        mat_data = local_material
             
     else:
         parent.report({'WARNING'}, f"Wrong material: {rootMaterial.name} | type: {mat.bl_idname}")
