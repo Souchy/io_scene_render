@@ -339,8 +339,12 @@ def export_material_node(parent, scene, mat, rootMaterial, filepath):
         #             parent.report({'INFO'}, "Add normal map!")
         #             mat_data["normal_map"] = normal_map_params
     
-        foreach  texture_or_value(parent, mat.inputs["Weight"], filepath)
-            print
+
+        parent.report({'INFO'}, "Inputs?: " + str(mat.inputs))
+        i = 0
+        for element in mat.inputs:
+            parent.report({'INFO'}, "Input ["+str(i)+"]: " + str(element))
+            i += 1
 
         # Export as diffuse
         diffuse_mat = {
@@ -349,8 +353,10 @@ def export_material_node(parent, scene, mat, rootMaterial, filepath):
             "roughness" : texture_or_value(parent, mat.inputs["Roughness"], filepath),
             "alpha":  texture_or_value(parent, mat.inputs["Alpha"], filepath),
         }
-        if "Weight" in mat.inputs:
-            diffuse_mat["translucency"] = texture_or_value(parent, mat.inputs["Weight"], filepath),
+        if texture_might_exist(mat.inputs["Transmission Weight"]):
+            transl_params = texture_or_value(parent, mat.inputs["Transmission Weight"], filepath)
+            diffuse_mat["translucency"] = transl_params
+        
         # Export as blend
         local_material = {}
         if scene.improved_principled:
